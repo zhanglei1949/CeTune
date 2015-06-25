@@ -21,7 +21,7 @@ no_die = False
 
 class Config():
     def __init__(self, conf_path):
-        self.conf_data = {}
+        self.conf_data = OrderedDict()
         cur_conf_section = self.conf_data
         with open(conf_path, "r") as f:
             for line in f:
@@ -74,6 +74,9 @@ class Config():
 		return self.conf_data[key]
 	else:
 	    print "%s not defined in all.conf" % key
+
+    def get_all(self):
+        return self.conf_data
 
 class bcolors:
     HEADER = '\033[95m'
@@ -146,7 +149,7 @@ def printout(level, content):
             f.write("[%s]%s\n" % (datetime.datetime.now().isoformat(),output))
         print bcolors.WARNING + output + bcolors.ENDC
     
-def pdsh(user, nodes, command, option="error_check"):
+def pdsh(user, nodes, command, option="error_check", nodie=False):
     _nodes = []
     for node in nodes:
         _nodes.append("%s@%s" % (user, node))
@@ -160,6 +163,9 @@ def pdsh(user, nodes, command, option="error_check"):
     if option == "check_return":
         stdout, stderr = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True).communicate()
         if stderr:
+            tmp_stderr = stderr.split('\n')
+            if "ssh exited with exit" in tmp_stderr[-2]:
+                stderr = '\n'.join(tmp_stderr[:-2])
             print('pdsh: %s' % args)
             with open(cetune_error_file,"a+") as f:
                 f.write('[%s]%s: %s\n' % (datetime.datetime.now().isoformat(), _nodes, args))
@@ -169,11 +175,14 @@ def pdsh(user, nodes, command, option="error_check"):
         _subp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
         stdout, stderr = _subp.communicate()
         if stderr:
+            tmp_stderr = stderr.split('\n')
+            if "ssh exited with exit" in tmp_stderr[-2]:
+                stderr = '\n'.join(tmp_stderr[:-2])
             print('pdsh: %s' % args)
             with open(cetune_error_file,"a+") as f:
                 f.write('[%s]%s: %s\n' % (datetime.datetime.now().isoformat(), _nodes, args))
             printout("ERROR",stderr)
-            if nodie:
+            if not nodie:
                 sys.exit()
 
 def bash(command, force=False):
@@ -382,3 +391,29 @@ def time_to_sec(fio_runtime, dest_unit='sec'):
         for i in range(dest_unit_index, cur_unit_index):
             runtime /= 1000.0
     return '%.3f' % runtime
+
+def unique_extend( list_data, new_list ):
+    for data in new_list:
+        if data not in list_data:
+            list_data.append( data )
+    return list_data
+
+class shellEmulator():
+    def __init__(self):
+        self.kill_tailf = False
+
+    def tail_f(self, fd):
+        interval = 1.0
+        while not self.kill_tailf:
+            where = fd.tell()
+            line = fd.readline()
+            if not line:
+              time.sleep(interval)
+              fd.seek(where)
+            else:
+              yield line
+
+def return_os_id(user, nodes):
+    stdout, stderr = pdsh(user, nodes, "lsb_release -i | awk -F: '{print $2}'", option="check_return")
+    res = format_pdsh_return(stdout)
+    return res

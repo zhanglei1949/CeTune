@@ -9,6 +9,8 @@ import socket
 import uuid
 import argparse
 import yaml
+from ceph_deploy import cli
+from threading import Thread
 
 pp = pprint.PrettyPrinter(indent=4)
 class Deploy:
@@ -74,6 +76,83 @@ class Deploy:
                     for key, value in section.items():
                         self.cluster["ceph_conf"]['osd'][key] = value
 
+    def install_binary(self, version="hammer"):
+        installed, non_installed = self.check_ceph_installed()
+        need_to_install_nodes = non_installed
+        common.printout("LOG", "Ceph already installed on below nodes")
+        for node, value in installed.items():
+            common.printout("LOG", "%s, installed version: %s" % (node, value))
+        if len(need_to_install_nodes):
+            common.printout("LOG", "Will start to install ceph on %s" % str(need_to_install_nodes))
+
+        pkg_type = "release"
+        if ":" in version:
+            try:
+                pkg_type, version = version.split(":") 
+            except:
+                common.printout("ERROR", "Please check version, received $s" % version)
+        se = common.shellEmulator()
+        monitor_thread = Thread( target = self.monitor_ceph_deploy, args=([se]) )
+        new_thread = Thread( target = self.install_thread_func, args = ([pkg_type, version, need_to_install_nodes]))
+        monitor_thread.start()
+        new_thread.start()
+        new_thread.join()
+        self.stop_monitor_ceph_deploy(se)
+        monitor_thread.join()
+
+    def stop_monitor_ceph_deploy(self, se):
+        se.kill_tailf = True
+
+    def monitor_ceph_deploy(self, se):
+        common.bash("echo > ceph.log")
+        for line in se.tail_f(open("ceph.log")):
+            print line,
+
+    def install_thread_func(self, pkg_type, version, need_to_install_nodes):
+        user = self.cluster["user"]
+        node_os_dict = common.return_os_id(user, need_to_install_nodes) 
+        print node_os_dict
+        for node in need_to_install_nodes:
+            if node in node_os_dict and "Ubuntu" in node_os_dict[node]:
+                common.pdsh(user, [node], "apt-get -f autoremove")
+            common.bash("ceph-deploy install --%s %s %s" % (pkg_type, version, node), True)
+
+    def uninstall_binary(self):
+        installed, non_installed = self.check_ceph_installed()
+        se = common.shellEmulator()
+        monitor_thread = Thread( target = self.monitor_ceph_deploy, args=([se]) )
+        monitor_thread.start()
+        new_thread = Thread( target = self.uninstall_thread_func, args = ([installed.keys()]))
+        new_thread.start()
+        new_thread.join()
+        self.stop_monitor_ceph_deploy(se)
+        monitor_thread.join()
+
+    def uninstall_thread_func(self, nodes):
+        user = self.cluster["user"]
+        node_os_dict = common.return_os_id(user, need_to_install_nodes) 
+        for node in nodes:
+            common.bash("ceph-deploy purge %s" % (node), True)
+            if node in node_os_dict and "Ubuntu" in node_os_dict[node]:
+                common.pdsh(user, [node], "apt-get -f autoremove")
+
+    def check_ceph_installed(self):
+        user = self.cluster["user"]
+        mons = sorted(self.cluster["mons"])
+        osds = sorted(self.cluster["osds"])
+        clients = sorted(self.cluster["clients"])
+        nodes = []
+        nodes = common.unique_extend(nodes, mons)
+        nodes = common.unique_extend(nodes, osds)
+        nodes = common.unique_extend(nodes, clients)
+        need_to_install_nodes = []
+        stdout, stderr = common.pdsh(user, nodes, "ceph -v", option = "check_return")
+        if stderr:
+            err = common.format_pdsh_return(stderr) 
+            need_to_install_nodes = err.keys()
+        res = common.format_pdsh_return(stdout)
+        return [res, need_to_install_nodes]
+    
     def gen_cephconf(self):
         cephconf = []
         for section in self.cluster["ceph_conf"]:
@@ -290,8 +369,8 @@ class Deploy:
                 # Start the OSD
                 common.pdsh(user, [osd], 'mkdir -p %s/pid' % mon_basedir)
                 pidfile="%s/pid/ceph-osd.%d.pid" % (mon_basedir, osd_num)
-                #lttng_prefix = "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-fork.so"
-                lttng_prefix = ""
+                lttng_prefix = "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-fork.so"
+                #lttng_prefix = ""
                 cmd = 'ceph-osd -i %d --pid-file=%s' % (osd_num, pidfile)
                 cmd = 'ceph-run %s' % cmd
                 stdout, stderr = common.pdsh(user, [osd], '%s sh -c "ulimit -n 16384 && ulimit -c unlimited && exec %s"' % (lttng_prefix, cmd), option="check_return")
@@ -306,6 +385,9 @@ def main(args):
         )
     parser.add_argument(
         '--config',
+        )
+    parser.add_argument(
+        '--version',
         )
     args = parser.parse_args(args)
     if args.operation == "redeploy":
@@ -324,6 +406,12 @@ def main(args):
         else:
             mydeploy = Deploy()
         mydeploy.gen_cephconf()
+    if args.operation == "install_binary":
+        mydeploy = Deploy()
+        mydeploy.install_binary(args.version)
+    if args.operation == "uninstall_binary":
+        mydeploy = Deploy()
+        mydeploy.uninstall_binary()
 
 if __name__ == '__main__':
     import sys
