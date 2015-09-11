@@ -47,7 +47,7 @@ def main(args):
         testcase_list.extend(testcases)
         fio_list.extend( benchmark_engine_config )
 
-        benchmark = cosbench.Cosbench1()
+        benchmark = cosbench.Cosbench()
         benchmark.generate_benchmark_cases()
         #testcases, benchmark_engine_config = benchmark.generate_benchmark_cases()
         #testcase_list.extend(testcases)

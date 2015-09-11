@@ -266,13 +266,14 @@ class QemuRbd(Benchmark):
 #            testcase_list.append('%8s\t%4s\t%16s\t%8s\t%8s\t%16s\t%8s\t%8s\t%8s' % ( testcase ))
         fio_capping = self.all_conf_data.get('fio_capping')
         test_config = OrderedDict()
+        test_config["vm_num"] = []
         test_config["rbd_volume_size"] = []
         test_config["io_pattern"] = []
         test_config["record_size"] = []
         test_config["queue_depth"] = []
         test_config["warmup_time"] = []
         test_config["runtime"] = []
-
+        test_config_qemu_flag = 0
         with open("../conf/cases.conf", "r") as f:
             for line in f.readlines():
                 #testcase_list = []
@@ -280,25 +281,28 @@ class QemuRbd(Benchmark):
                 #testcase_list.append({"benchmar_engine":p[0],"worker":p[1],"container_size":p[2],"io_pattern":p[3],"block_size":p[4],"work_depth":p[5],"ramup_time":p[6],"run_time":p[7],"device":p[8]})
                 if "qemurbd" not in p[0]:
                     continue
-                test_config["engine"] = ["qemurbd"]
-                test_config["vm_num"] = p[1]
+                if p[1] not in test_config["vm_num"]:
+                    test_config["vm_num"].append(p[1])
                 if p[2] not in test_config["rbd_volume_size"]:
                     test_config["rbd_volume_size"].append(p[2])
-                if p[3] not in test_config["rbd_volume_size"]:
+                if p[3] not in test_config["io_pattern"]:
                     test_config["io_pattern"].append(p[3])
-                if p[4] not in test_config["rbd_volume_size"]:
+                if p[4] not in test_config["record_size"]:
                     test_config["record_size"].append(p[4])
-                if p[5] not in test_config["rbd_volume_size"]:
+                if p[5] not in test_config["queue_depth"]:
                     test_config["queue_depth"].append(p[5])
-                if p[6] not in test_config["rbd_volume_size"]:
+                if p[6] not in test_config["warmup_time"]:
                     test_config["warmup_time"].append(p[6])
-                if p[7] not in test_config["rbd_volume_size"]:
+                if p[7] not in test_config["runtime"]:
                     test_config["runtime"].append(p[7])
-        test_config["disk"] = ["/dev/vdb"]            
+                test_config["disk"] = ["/dev/vdb"]            
+                test_config["engine"] = ["qemurbd"]
+                test_config_qemu_flag = 1
         fio_list = []
-        fio_list.append("[global]")
-        fio_list.append("    direct=1")
-        fio_list.append("    time_based")
+        if test_config_qemu_flag:
+            fio_list.append("[global]")
+            fio_list.append("    direct=1")
+            fio_list.append("    time_based")
         for element in itertools.product(test_config["io_pattern"], test_config["record_size"], test_config["queue_depth"], test_config["rbd_volume_size"], test_config["warmup_time"], test_config["runtime"], test_config["disk"]):
             io_pattern, record_size, queue_depth, rbd_volume_size, warmup_time, runtime, disk = element
             io_pattern_fio = io_pattern
