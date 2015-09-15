@@ -31,13 +31,15 @@ def main(args):
     if option == "gen_case":
         testcase_list = []
         benchmark = qemurbd.QemuRbd()
-        testcases, benchmark_engine_config = benchmark.generate_benchmark_cases()
-        testcase_list.extend(testcases)
+        #testcases, benchmark_engine_config = benchmark.generate_benchmark_cases()
+        # testcase_list.extend(testcases)
+        benchmark_engine_config = benchmark.generate_benchmark_cases()
         fio_list = benchmark_engine_config
 
         benchmark = fiorbd.FioRbd()
-        testcases, benchmark_engine_config = benchmark.generate_benchmark_cases()
-        testcase_list.extend(testcases)
+        #testcases, benchmark_engine_config = benchmark.generate_benchmark_cases()
+        #testcase_list.extend(testcases)
+        benchmark_engine_config = benchmark.generate_benchmark_cases()
         fio_list.extend( benchmark_engine_config )
 
         benchmark = fiocephfs.FioCephFS()
@@ -46,11 +48,12 @@ def main(args):
         fio_list.extend( benchmark_engine_config )
 
         benchmark = cosbench.Cosbench()
-        testcases, benchmark_engine_config = benchmark.generate_benchmark_cases()
-        testcase_list.extend(testcases)
+        benchmark.generate_benchmark_cases()
+        #testcases, benchmark_engine_config = benchmark.generate_benchmark_cases()
+        #testcase_list.extend(testcases)
 
-        with open("../conf/cases.conf", "w") as f:
-            f.write( '\n'.join(testcase_list) + "\n" )
+        #with open("../conf/cases.conf", "w") as f:
+        #   f.write( '\n'.join(testcase_list) + "\n" )
 
         if len(fio_list) > 0:
             with open("../conf/fio.conf", "w") as f:
