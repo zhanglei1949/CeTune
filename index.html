@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Cetune by 01org</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Cetune</h1>
+        <h2></h2>
+        <a href="https://github.com/01org/CeTune" class="button"><small>View project on</small> GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h4>
+<a id="cetune-a-ceph-profiling-and-tuning-framework" class="anchor" href="#cetune-a-ceph-profiling-and-tuning-framework" aria-hidden="true"><span class="octicon octicon-link"></span></a>CeTune: A Ceph Profiling and Tuning Framework</h4>
+
+<h6>
+<a id="functionality-description" class="anchor" href="#functionality-description" aria-hidden="true"><span class="octicon octicon-link"></span></a>Functionality Description</h6>
+
+<ul>
+<li>CeTune is a toolkit/framework to deploy, benchmark, profile and tune *Ceph cluster performance. </li>
+<li>Aim to speed up the procedure of benchmarking *Ceph performance, and provide clear data charts of system metrics, latency breakdown data for users to analyze *Ceph performance.</li>
+<li>CeTune provides test performance through three interfaces: block, file system and object to evaluate *Ceph.</li>
+</ul>
+
+<h6>
+<a id="maintainance" class="anchor" href="#maintainance" aria-hidden="true"><span class="octicon octicon-link"></span></a>Maintainance</h6>
+
+<ul>
+<li>CeTune is an opensource project, under LGPL V2.1, Drived by INTEL BDT CSE team.</li>
+<li>Maillist: <a href="https://github.com/01org/CeTune">https://github.com/01org/CeTune</a>
+</li>
+<li>Subscribe maillist: <a href="https://lists.01.org/mailman/listinfo/cephperformance">https://lists.01.org/mailman/listinfo/cephperformance</a>
+</li>
+</ul>
+
+<h6>
+<a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h6>
+
+<ul>
+<li>
+<p>Prepare:</p>
+
+<ul>
+<li>one node as CeTune controller(AKA head), Other nodes as CeTune worker(AKA worker)</li>
+<li>Head is able to autossh to all workers include himself, head has a 'hosts' file contains all workers info.</li>
+<li>All nodes are able to connect to yum/apt-get repository and also being able to wget/curl from ceph.com</li>
+<li>package pre-installation:
+
+<ul>
+<li>Install to head:
+
+<ul>
+<li>apt-get/yum install -y python-pip pdsh unzip expect sysstat curl openjdk-7-jre haproxy python-matplotlib python-numpy</li>
+<li>pip install ceph-deploy pyyaml argparse</li>
+</ul>
+</li>
+<li>Install to workers
+
+<ul>
+<li>apt-get/yum install -y python-pip unzip sysstat curl openjdk-7-jre haproxy</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>Configure:</p>
+
+<ul>
+<li>conf/all.conf
+
+<ul>
+<li>This is a configuration file to describe cluster, benchmark</li>
+</ul>
+</li>
+<li>conf/tuner.yaml
+
+<ul>
+<li>This is a configuration file to tune ceph cluster, including pool configuration, ceph.conf, disk tuning, etc.</li>
+</ul>
+</li>
+<li>conf/cases.conf</li>
+<li>  This is a configuration file to decide which test case to run.</li>
+</ul>
+</li>
+<li>
+<p>Executive workflow:</p>
+
+<ul>
+<li>
+<p>CeTune WEBUI</p>
+
+<ul>
+<li>cd webui; python webui.py</li>
+<li>enter CeTune WebUI by Browser: http://{CeTune_server_ip}:8080</li>
+</ul>
+</li>
+<li>
+<p>CeTune CLI</p>
+
+<ul>
+<li>CeTune "Deploy ceph cluster" phase:
+
+<ul>
+<li>CeTune will check if ceph is installed, if no, install ceph firstly, config version in all.conf</li>
+<li>CeTune will deploy ceph cluster according to cluster configuration in all.conf</li>
+<li>CeTune will apply tuning in tuner.yaml to ceph cluster, waiting ceph to be healthy</li>
+<li>How to kick off CeTune deploy</li>
+</ul>
+
+<pre><code>config tuner.yaml workstages as "deploy" only
+cd tuner; python tuner.py
+</code></pre>
+</li>
+<li>CeTune "Benchmark ceph cluster" phase:
+
+<ul>
+<li>CeTune will compare current ceph tuning with tuner.yaml, if tuner.yaml contains some ceph configuartion not applyed to ceph cluster yet, CeTune will re-generate ceph.conf and restart ceph cluster.</li>
+<li>Run benchmark lists in cases.conf, currently CeTune supported qemufio, rbdfio and cosbench.</li>
+<li>Start analyze results after done benchmarking, generating html after analyzer.</li>
+<li>How to kick off CeTune Benchmark</li>
+</ul>
+
+<pre><code>generate test case from all.conf, and edit cases.conf manually to remove the test case if unnecessary.
+config tuner.yaml workstages as "benchmark" only
+cd tuner; python tuner.py
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>User Guidance:</p>
+
+<ul>
+<li><a href="https://github.com/01org/CeTune/blob/master/CeTune%20Document.pdf">CeTune Documents Download Url</a></li>
+</ul>
+</li>
+<li>
+<p>Examples:</p>
+
+<pre><code>root@client01:/root#  cd /root/cetune/tuner
+root@client01:/root/cetune/tuner# python tuner.py
+[LOG]Check ceph version, reinstall ceph if necessary
+[LOG]start to redeploy ceph
+[LOG]ceph.conf file generated
+[LOG]Shutting down mon daemon
+[LOG]Shutting down osd daemon
+[LOG]Clean mon dir
+[LOG]Started to mkfs.xfs on osd devices
+[LOG]mkfs.xfs for /dev/sda1 on aceph01
+… …
+[LOG]mkfs.xfs for /dev/sdf1 on aceph04
+[LOG]Build osd.0 daemon on aceph01
+… …
+[LOG]Build osd.39 daemon on aceph01
+[LOG]delete ceph pool rbd
+[LOG]delete ceph pool data
+[LOG]delete ceph pool metadata
+[LOG]create ceph pool rbd, pg_num is 8192
+[LOG]set ceph pool rbd size to 2
+[WARNING]Applied tuning, waiting ceph to be healthy
+[WARNING]Applied tuning, waiting ceph to be healthy
+… …
+[LOG]Tuning has been applied to ceph cluster, ceph is healthy now 
+RUNID: 36, Result dir: //mnt/data/36-80-seqwrite-4k-100-300-vdb
+[LOG]Prerun_check: check if rbd volumes are initialized
+[WARNING]Ceph cluster used data: 0.00KB, planed data: 3276800MB
+[WARNING]rbd volume initialization not done
+[LOG]80 RBD Images created
+[LOG]create rbd volume vm attaching xml
+[LOG]Distribute vdbs xml
+[LOG]Attach rbd image to vclient1
+… …
+[LOG]Start to initialize rbd volumes
+[LOG]FIO Jobs started on [‘vclient01’,’vclient02’, …. ‘vclient80’]
+[WARN]160 fio job still running
+… …
+[LOG]RBD initialization complete
+[LOG]Prerun_check: check if fio installed in vclient
+[LOG]Prerun_check: check if rbd volume attached
+[LOG]Prerun_check: check if sysstat installed
+[LOG]Prepare_run: distribute fio.conf to vclient
+[LOG]Benchmark start
+[LOG]FIO Jobs started on [‘vclient01’,’vclient02’, …. ‘vclient80’]
+[WARN]160 fio job still running
+… …
+[LOG]stop monitoring, and workload
+[LOG]collecting data
+[LOG]processing data
+[LOG]creating html report
+[LOG]scp to result backup server
+</code></pre>
+
+<ul>
+<li>Result dir</li>
+</ul>
+
+<pre><code>- 278-140-qemurbd-seqwrite-64k-qd64-40g-100-400-vdb.html
+- conf
+  - all.conf
+    - tuner.yaml
+    - cetune_proces.log
+- raw
+  - aceph01
+  - aceph02
+  - ...
+</code></pre>
+
+<ul>
+<li>Result HTML pages
+<img src="https://github.com/01org/CeTune/blob/master/examples/CeTune.png" alt="CeTune HTML">
+</li>
+</ul>
+</li>
+</ul>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/01org/CeTune/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/01org/CeTune/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/01org/CeTune"></a> is maintained by <a href="https://github.com/01org">01org</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+            <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-69358033-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
