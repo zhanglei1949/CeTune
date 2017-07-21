@@ -166,7 +166,7 @@ class Deploy(object):
                        'hammer': '0.94',
                        'infernalis': '9.2',
 		       'jewel': '10.2',
-                       'kraken' : '11.2.0'}
+                       'kraken' : '11.2'}
         for node, version_code in installed.items():
             if version == "":
                 for release_name, short_version in version_map.items():
@@ -897,7 +897,36 @@ class Deploy(object):
         formatted_outStr = common.format_pdsh_return(outStr)
         ceph_status = formatted_outStr[head]
         #outList = [x.strip() for x in outStr.split('\n')]
-        if "no active mgr" in outStr:
+        #get the version
+        nodes = []
+        mons = sorted(self.cluster["mons"].keys())
+        nodes = common.unique_extend(nodes, mons)
+        stdout, stderr = common.pdsh(user, nodes, "ceph -v", option = "check_return")
+        if (stderr):
+            common.printout("Error: error in geting ceph version on monitor nodes")
+            return 1;
+        res = common.format_pdsh_return(stdout)
+        print res
+        version_map = {'cuttlefish': '0.61',
+                        'dumpling': '0.67',
+                        'emperor': '0.72',
+                        'firefly': '0.80',
+                        'giant': '0.87',
+                        'hammer': '0.94',
+                        'infernalis': '9.2',
+                        'jewel': '10.2'}
+        flag = True
+        for node, node_version in res:
+            for version_code, short_version in version_map:
+                if short_version in node_version:
+                    print short_version
+                    print node_version
+                    flag = False
+                    break
+            if not flag:
+                break
+        print flag
+        if "no active mgr" in outStr and flag:
             common.pdsh(user, [head], "ceph auth get-or-create mgr.admin mon 'allow *' && ceph-mgr -i %s" % ceph_status["fsid"], option="console")
             common.printout("LOG", "create mgr success: admin")
         else:
